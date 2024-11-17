@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub 加速服务</title>
+    <link rel="icon" href="favicon.ico">
+    <!-- 引入 Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Bootstrap Icons (可选，用于按钮图标) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <!-- 自定义 CSS 样式 -->
+    <style>
+        /* 全局样式 */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* 页头部分 */
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 60px 20px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            margin: 10px 0 20px;
+            font-size: 1.1em;
+        }
+
+        /* 主要内容容器 */
+        .content {
+            flex: 1; /* 使内容区域占据剩余空间 */
+        }
+
+        /* 输入区域 */
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto 30px;
+            padding: 0 15px; /* 确保左右内边距对齐 */
+        }
+
+        .form-container .d-flex {
+            gap: 10px; /* 使用 gap 代替 margin-right */
+        }
+
+        .form-container input {
+            flex: 1; /* 使输入框占据剩余空间 */
+            border-radius: 5px;
+            padding: 10px;
+            border: 0;
+            background-color: #444c54; /* 设置背景颜色 */
+            color: #ffffff;
+        }
+
+        .form-container input::placeholder {
+            color: #ffffff;
+            opacity: 0.7;
+        }
+
+        .form-container input:focus {
+            background-color: #555e6c; /* 聚焦时稍微调整颜色 */
+            outline: none;
+        }
+
+        /* 按钮组样式 */
+        .form-container .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-container button {
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 2px solid transparent;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+            white-space: nowrap;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* 复制按钮样式 */
+        .btn-copy {
+            background-color: #0d6efd; /* Bootstrap primary */
+            color: #ffffff;
+            border-color: #0d6efd;
+        }
+
+        .btn-copy:hover {
+            background-color: #0b5ed7;
+            border-color: #0a58ca;
+            color: #ffffff;
+        }
+
+        /* 下载按钮样式 */
+        .btn-download {
+            background-color: #198754; /* Bootstrap success */
+            color: #ffffff;
+            border-color: #198754;
+        }
+
+        .btn-download:hover {
+            background-color: #157347;
+            border-color: #146c43;
+            color: #ffffff;
+        }
+
+        /* 使用说明区域 */
+        .tutorial {
+            max-width: 800px;
+            width: 90%;
+            margin: 50px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+        }
+
+        /* 调整标题和文本 */
+        .tutorial h2 {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.8em;
+        }
+
+        .tutorial p, .tutorial li {
+            font-size: 1em;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .tutorial ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+
+        /* 使代码块响应式 */
+        .tutorial pre {
+            background-color: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 媒体查询：针对中小屏幕进行调整 */
+        @media (max-width: 768px) {
+            .form-container .d-flex {
+                flex-direction: column;
+            }
+
+            .form-container .btn-group {
+                flex-direction: column;
+            }
+
+            .form-container button {
+                width: 100%;
+            }
+
+            .tutorial {
+                width: 95%;
+                padding: 15px;
+            }
+
+            .tutorial h2 {
+                font-size: 1.5em;
+            }
+
+            .tutorial p, .tutorial li {
+                font-size: 0.95em;
+            }
+
+            .tutorial pre {
+                font-size: 0.85em;
+                padding: 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tutorial {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .tutorial h2 {
+                font-size: 1.3em;
+            }
+
+            .tutorial p, .tutorial li {
+                font-size: 0.9em;
+            }
+
+            .tutorial pre {
+                font-size: 0.8em;
+                padding: 6px;
+            }
+        }
+
+        /* Footer 样式 */
+        .footer-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px 0;
+            background-color: #f0f0f0;
+        }
+
+        .footer-container p {
+            margin: 0;
+            font-size: 1em;
+            color: #343a40;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .footer-container p a {
+            color: #343a40;
+            text-decoration: none;
+        }
+
+        .footer-container p a:hover {
+            text-decoration: underline;
+        }
+
+        /* Bootstrap Toast */
+        .toast-body {
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+<!-- 页头部分 -->
+<div class="header">
+    <!-- Logo SVG -->
+    <svg class="icon" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" width="128" height="128">
+        <path d="M498.894518 100.608396c-211.824383 0-409.482115 189.041494-409.482115 422.192601 0 186.567139 127.312594 344.783581 295.065226 400.602887 21.13025 3.916193 32.039717-9.17701 32.039717-20.307512 0-10.101055 1.176802-43.343157 1.019213-78.596056-117.448946 25.564235-141.394311-49.835012-141.394311-49.835012-19.225877-48.805566-46.503127-61.793368-46.503127-61.793368-38.293141-26.233478 3.13848-25.611308 3.13848-25.611308 42.361807 2.933819 64.779376 43.443441 64.779376 43.443441 37.669948 64.574714 98.842169 45.865607 122.912377 35.094286 3.815909-27.262924 14.764262-45.918819 26.823925-56.431244-93.796246-10.665921-192.323237-46.90017-192.323237-208.673623 0-46.071292 16.498766-83.747379 43.449581-113.332185-4.379751-10.665921-18.805298-53.544497 4.076852-111.732757 0 0 35.46063-11.336186 116.16265 43.296085 33.653471-9.330506 69.783343-14.022365 105.654318-14.174837 35.869952 0.153496 72.046896 4.844332 105.753579 14.174837 80.606853-54.631248 116.00813-43.296085 116.00813-43.296085 22.935362 58.18826 8.559956 101.120049 4.180206 111.732757 27.052123 29.584806 43.443441 67.260893 43.443441 113.332185 0 162.137751-98.798167 197.850114-192.799074 208.262254 15.151072 13.088086 28.65155 38.804794 28.65155 78.17957 0 56.484456-0.459464 101.94381-0.459464 115.854635 0 11.235902 7.573489 24.381293 29.014824 20.2543C825.753867 867.330798 933.822165 709.10924 933.822165 522.700713c0-233.155201-224.12657-422.192601-434.927647-422.192601L498.894518 100.608396z" fill="#ffffff"></path>
+    </svg>
+    <h1>GitHub 加速服务</h1>
+    <p>对 Releases、Archive、Gist、Raw 等文件提供代理加速下载服务。</p>
+
+    <!-- 输入区域 -->
+    <div class="container form-container">
+        <div class="d-flex">
+            <input type="text" id="githubLinkInput" class="form-control" placeholder="输入 GitHub 文件链接" required>
+            <div class="btn-group">
+                <button type="button" class="btn btn-copy" id="copyButton" disabled>
+                    <i class="bi bi-clipboard"></i> 复制
+                </button>
+                <button type="button" class="btn btn-download" id="downloadButton" disabled>
+                    <i class="bi bi-download"></i> 下载
+                </button>
+            </div>
+        </div>
+        <div id="errorMessage" class="text-danger mt-2" style="display: none;">请输入有效的 GitHub 链接</div>
+    </div>
+</div>
+
+<!-- 主要内容区域 -->
+<div class="content">
+    <!-- 使用说明区域 -->
+    <div class="container tutorial">
+        <h2>使用说明</h2>
+        <p>本服务支持对 GitHub 的 Releases、Archive、Raw、Gist 等资源进行加速下载。</p>
+        <ul>
+            <li>支持终端命令行工具，如 <code>git clone</code>、<code>wget</code>、<code>curl</code> 等。</li>
+            <li>支持 <code>raw.githubusercontent.com</code>、<code>gist.github.com</code>、<code>gist.githubusercontent.com</code> 等链接加速。</li>
+            <li>注意：不支持使用 SSH Key 的方式进行 <code>git clone</code>。</li>
+        </ul>
+        <pre><code>git clone https://gh.suki.icu/github.com/nginx/nginx.git
+
+wget https://gh.suki.icu/github.com/nginx/nginx/archive/refs/heads/master.zip
+
+curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md</code></pre>
+    </div>
+</div>
+
+<!-- Bootstrap Toast -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">
+                操作成功
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-container">
+        <p>&copy; <span id="currentYear"></span> <a href="https://moenya.net" target="_blank" rel="noopener noreferrer">Moenya</a></p>
+        <p>Fork from <a href="https://github.com/WJQSERVER-STUDIO/ghproxy" target="_blank" rel="noopener noreferrer">ghproxy</a></p>
+    </div>
+</footer>
+
+<!-- 引入脚本 -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- 功能性 JavaScript 代码 -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const toastEl = document.getElementById('liveToast');
+        const toastBody = document.getElementById('toastBody');
+        const toast = new bootstrap.Toast(toastEl);
+
+        // 显示 Toast 提示
+        function showToast(message) {
+            toastBody.textContent = message;
+            toast.show();
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        // 隐藏错误信息
+        function hideError() {
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.style.display = 'none';
+        }
+
+        // 验证 GitHub 链接
+        function isValidGithubLink(link) {
+            const patterns = [
+                /^https?:\/\/github\.com\/.+/,
+                /^https?:\/\/raw\.githubusercontent\.com\/.+/,
+                /^https?:\/\/gist\.github\.com\/.+/,
+                /^https?:\/\/gist\.githubusercontent\.com\/.+/
+            ];
+            return patterns.some(pattern => pattern.test(link));
+        }
+
+        // 格式化 GitHub 链接
+        function formatGithubLink() {
+            const githubLinkInput = document.getElementById('githubLinkInput').value.trim();
+            const currentHost = window.location.host;
+            let formattedLink = "";
+
+            if (!isValidGithubLink(githubLinkInput)) {
+                showToast('请输入有效的 GitHub 链接');
+                showError('请输入有效的 GitHub 链接');
+                disableButtons();
+                return null;
+            }
+
+            hideError();
+
+            if (githubLinkInput.startsWith("https://github.com/") || githubLinkInput.startsWith("http://github.com/")) {
+                formattedLink = "https://" + currentHost + "/github.com" + githubLinkInput.substring(githubLinkInput.indexOf("/", 8));
+            } else if (githubLinkInput.startsWith("github.com/")) {
+                formattedLink = "https://" + currentHost + "/" + githubLinkInput;
+            } else if (githubLinkInput.startsWith("https://raw.githubusercontent.com/") || githubLinkInput.startsWith("http://raw.githubusercontent.com/")) {
+                formattedLink = "https://" + currentHost + githubLinkInput.substring(githubLinkInput.indexOf("/", 7));
+            } else if (githubLinkInput.startsWith("raw.githubusercontent.com/")) {
+                formattedLink = "https://" + currentHost + "/" + githubLinkInput;
+            } else if (githubLinkInput.startsWith("https://gist.githubusercontent.com/") || githubLinkInput.startsWith("http://gist.githubusercontent.com/")) {
+                formattedLink = "https://" + currentHost + "/gist.github.com" + githubLinkInput.substring(githubLinkInput.indexOf("/", 22));
+            } else if (githubLinkInput.startsWith("gist.githubusercontent.com/")) {
+                formattedLink = "https://" + currentHost + "/" + githubLinkInput;
+            }
+
+            return formattedLink;
+        }
+
+        // 启用按钮
+        function enableButtons() {
+            document.getElementById('copyButton').disabled = false;
+            document.getElementById('downloadButton').disabled = false;
+        }
+
+        // 禁用按钮
+        function disableButtons() {
+            document.getElementById('copyButton').disabled = true;
+            document.getElementById('downloadButton').disabled = true;
+        }
+
+        // 复制链接到剪贴板
+        function copyLink() {
+            const formattedLink = formatGithubLink();
+            if (!formattedLink) return;
+
+            navigator.clipboard.writeText(formattedLink).then(() => {
+                showToast('链接已复制到剪贴板');
+            }).catch(() => {
+                showToast('复制失败，请手动复制');
+            });
+        }
+
+        // 下载文件
+        function downloadFile() {
+            const formattedLink = formatGithubLink();
+            if (!formattedLink) return;
+
+            // 创建一个临时的<a>元素并点击以触发下载
+            const link = document.createElement('a');
+            link.href = formattedLink;
+            link.download = ''; // 可以根据需要设置默认下载文件名
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast('下载已开始');
+        }
+
+        // 事件监听
+        document.getElementById('githubLinkInput').addEventListener('input', function() {
+            const formattedLink = formatGithubLink();
+            if (formattedLink) {
+                enableButtons();
+            } else {
+                disableButtons();
+            }
+        });
+
+        document.getElementById('copyButton').addEventListener('click', copyLink);
+        document.getElementById('downloadButton').addEventListener('click', downloadFile);
+
+        // 页面加载完成后禁用按钮
+        disableButtons();
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+        const currentYearSpan = document.getElementById('currentYear');
+        const startYear = 2023;
+        const currentYear = new Date().getFullYear();
+        currentYearSpan.textContent = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+    });
+</script>
+</body>
+</html>
