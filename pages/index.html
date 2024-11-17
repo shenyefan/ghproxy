@@ -276,7 +276,6 @@
                 </button>
             </div>
         </div>
-        <div id="errorMessage" class="text-danger mt-2" style="display: none;">请输入有效的 GitHub 链接</div>
     </div>
 </div>
 
@@ -300,16 +299,17 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
 </div>
 
 <!-- Bootstrap Toast -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-    <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+    <div id="liveToast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="d-flex">
             <div class="toast-body" id="toastBody">
-                操作成功
+                Moenya
             </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            <button type="button" class="btn-close me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
 </div>
+
 
 <footer>
     <div class="footer-container">
@@ -325,27 +325,41 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
 <!-- 功能性 JavaScript 代码 -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // 初始化 Toast 元素
         const toastEl = document.getElementById('liveToast');
         const toastBody = document.getElementById('toastBody');
         const toast = new bootstrap.Toast(toastEl);
 
         // 显示 Toast 提示
-        function showToast(message) {
-            toastBody.textContent = message;
-            toast.show();
-        }
+        function showToast(message, type = 'primary') {
+            if (toastBody && toast) {
+                // 移除之前的背景类
+                toastEl.classList.remove('text-bg-primary', 'text-bg-warning', 'text-bg-danger', 'text-bg-success');
 
-        // 显示错误信息
-        function showError(message) {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-        }
+                // 根据类型添加新的背景类
+                switch(type) {
+                    case 'primary':
+                        toastEl.classList.add('text-bg-primary');
+                        break;
+                    case 'warning':
+                        toastEl.classList.add('text-bg-warning');
+                        break;
+                    case 'danger':
+                        toastEl.classList.add('text-bg-danger');
+                        break;
+                    case 'success':
+                        toastEl.classList.add('text-bg-success');
+                        break;
+                    default:
+                        toastEl.classList.add('text-bg-primary');
+                }
 
-        // 隐藏错误信息
-        function hideError() {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.style.display = 'none';
+                // 设置消息内容并显示 Toast
+                toastBody.textContent = message;
+                toast.show();
+            } else {
+                console.warn('Toast 元素未找到或未初始化。');
+            }
         }
 
         // 验证 GitHub 链接
@@ -366,7 +380,7 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
             let formattedLink = "";
 
             if (!isValidGithubLink(githubLinkInput)) {
-                showToast('请输入有效的 GitHub 链接');
+                showToast('请输入有效的 GitHub 链接', 'danger');
                 showError('请输入有效的 GitHub 链接');
                 disableButtons();
                 return null;
@@ -393,14 +407,22 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
 
         // 启用按钮
         function enableButtons() {
-            document.getElementById('copyButton').disabled = false;
-            document.getElementById('downloadButton').disabled = false;
+            const copyButton = document.getElementById('copyButton');
+            const downloadButton = document.getElementById('downloadButton');
+            if (copyButton && downloadButton) {
+                copyButton.disabled = false;
+                downloadButton.disabled = false;
+            }
         }
 
         // 禁用按钮
         function disableButtons() {
-            document.getElementById('copyButton').disabled = true;
-            document.getElementById('downloadButton').disabled = true;
+            const copyButton = document.getElementById('copyButton');
+            const downloadButton = document.getElementById('downloadButton');
+            if (copyButton && downloadButton) {
+                copyButton.disabled = true;
+                downloadButton.disabled = true;
+            }
         }
 
         // 复制链接到剪贴板
@@ -409,9 +431,9 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
             if (!formattedLink) return;
 
             navigator.clipboard.writeText(formattedLink).then(() => {
-                showToast('链接已复制到剪贴板');
+                showToast('链接已复制到剪贴板', 'success');
             }).catch(() => {
-                showToast('复制失败，请手动复制');
+                showToast('复制失败，请手动复制', 'danger');
             });
         }
 
@@ -420,7 +442,7 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
             const formattedLink = formatGithubLink();
             if (!formattedLink) return;
 
-            // 创建一个临时的<a>元素并点击以触发下载
+            // 创建一个临时的 <a> 元素并点击以触发下载
             const link = document.createElement('a');
             link.href = formattedLink;
             link.download = ''; // 可以根据需要设置默认下载文件名
@@ -428,31 +450,98 @@ curl -O https://gh.suki.icu/raw.githubusercontent.com/nginx/agent/main/README.md
             link.click();
             document.body.removeChild(link);
 
-            showToast('下载已开始');
+            showToast('下载已开始', 'success');
+        }
+
+        // 获取文件大小限制信息并显示 Toast
+        function fetchSizeLimit() {
+            fetch(`${window.location.origin}/api/size_limit`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP 错误！状态码: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Size Limit Data:', data);
+                    // 确认 API 返回的数据结构
+                    const sizeLimit = data.MaxResponseBodySize || data.maxResponseBodySize || data.max_size;
+                    if (sizeLimit) {
+                        showToast(`文件大小限制：${sizeLimit} MB`, 'warning');
+                    } else {
+                        throw new Error('响应中未找到文件大小限制字段');
+                    }
+                })
+                .catch(error => {
+                    console.error('获取文件大小限制时出错:', error);
+                    showToast('无法获取文件大小限制', 'danger');
+                });
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            } else {
+                console.warn('Error 元素未找到。');
+            }
+        }
+
+        // 隐藏错误信息
+        function hideError() {
+            const errorEl = document.getElementById('error');
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
         }
 
         // 事件监听
-        document.getElementById('githubLinkInput').addEventListener('input', function() {
-            const formattedLink = formatGithubLink();
-            if (formattedLink) {
-                enableButtons();
-            } else {
-                disableButtons();
-            }
-        });
+        const githubLinkInput = document.getElementById('githubLinkInput');
+        if (githubLinkInput) {
+            githubLinkInput.addEventListener('input', function() {
+                const formattedLink = formatGithubLink();
+                if (formattedLink) {
+                    enableButtons();
+                } else {
+                    disableButtons();
+                }
+            });
+        } else {
+            console.warn('githubLinkInput 元素未找到。');
+        }
 
-        document.getElementById('copyButton').addEventListener('click', copyLink);
-        document.getElementById('downloadButton').addEventListener('click', downloadFile);
+        const copyButton = document.getElementById('copyButton');
+        if (copyButton) {
+            copyButton.addEventListener('click', copyLink);
+        } else {
+            console.warn('copyButton 元素未找到。');
+        }
 
-        // 页面加载完成后禁用按钮
+        const downloadButton = document.getElementById('downloadButton');
+        if (downloadButton) {
+            downloadButton.addEventListener('click', downloadFile);
+        } else {
+            console.warn('downloadButton 元素未找到。');
+        }
+
+        // 页面加载完成后禁用按钮并获取文件大小限制
         disableButtons();
-    });
-    document.addEventListener('DOMContentLoaded', function() {
+        fetchSizeLimit();
+
+        // 设置当前年份
         const currentYearSpan = document.getElementById('currentYear');
-        const startYear = 2023;
-        const currentYear = new Date().getFullYear();
-        currentYearSpan.textContent = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+        if (currentYearSpan) {
+            const startYear = 2023;
+            const currentYear = new Date().getFullYear();
+            currentYearSpan.textContent = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+        } else {
+            console.warn('currentYear 元素未找到。');
+        }
     });
 </script>
+
 </body>
 </html>
