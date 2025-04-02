@@ -1,7 +1,0 @@
-{
-  "blacklist": [
-    "black/list",
-    "test/test1",
-    "example/*"
-  ]
-}

@@ -1,120 +1,215 @@
 package main
 
 import (
-	"flag"
+	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"time"
-
-	"ghproxy/api"
-	"ghproxy/auth"
-	"ghproxy/config"
-	"ghproxy/logger"
-	"ghproxy/proxy"
-	"ghproxy/rate"
-
 	"github.com/gin-gonic/gin"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+)
+
+const (
+	sizeLimit = 1024 * 1024 * 1024 * 5 // 允许的文件大小，默认5GB
+	host      = "0.0.0.0"              // 监听地址
+	port      = 4487                   // 监听端口
 )
 
 var (
-	cfg        *config.Config
-	router     *gin.Engine
-	configfile = "/data/ghproxy/config/config.toml"
-	cfgfile    string
-	limiter    *rate.RateLimiter
-	version    string
+	exps = []*regexp.Regexp{
+		regexp.MustCompile(`^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:releases|archive)/.*$`),
+		regexp.MustCompile(`^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:blob|raw)/.*$`),
+		regexp.MustCompile(`^(?:https?://)?github\.com/([^/]+)/([^/]+)/(?:info|git-).*$`),
+		regexp.MustCompile(`^(?:https?://)?raw\.github(?:usercontent|)\.com/([^/]+)/([^/]+)/.+?/.+$`),
+		regexp.MustCompile(`^(?:https?://)?gist\.github\.com/([^/]+)/.+?/.+$`),
+	}
+	httpClient *http.Client
+	config     *Config
+	configLock sync.RWMutex
 )
 
-var (
-	logw       = logger.Logw
-	logInfo    = logger.LogInfo
-	logWarning = logger.LogWarning
-	logError   = logger.LogError
-)
-
-func readFlag() {
-	flag.StringVar(&cfgfile, "cfg", configfile, "config file path")
-}
-
-func loadConfig() {
-	var err error
-	cfg, err = config.LoadConfig(cfgfile)
-	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
-	}
-	fmt.Println("Config File Path: ", cfgfile)
-	fmt.Printf("Loaded config: %v\n", cfg)
-}
-
-func setupLogger(cfg *config.Config) {
-	var err error
-	err = logger.Init(cfg.Log.LogFilePath, cfg.Log.MaxLogSize)
-	if err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-	logInfo("Config File Path: ", cfgfile)
-	logInfo("Loaded config: %v\n", cfg)
-	logInfo("Init Completed")
-}
-
-func loadlist(cfg *config.Config) {
-	auth.Init(cfg)
-}
-
-func setupApi(cfg *config.Config, router *gin.Engine, version string) {
-	api.InitHandleRouter(cfg, router, version)
-}
-
-func setupRateLimit(cfg *config.Config) {
-	if cfg.RateLimit.Enabled {
-		limiter = rate.New(cfg.RateLimit.RatePerMinute, cfg.RateLimit.Burst, 1*time.Minute)
-		logInfo("Rate Limit Loaded")
-	}
-}
-
-func init() {
-	readFlag()
-	flag.Parse()
-	loadConfig()
-	setupLogger(cfg)
-	loadlist(cfg)
-	setupRateLimit(cfg)
-
-	gin.SetMode(gin.ReleaseMode)
-
-	router = gin.Default()
-	if cfg.Server.EnableH2C {
-		router.UseH2C = true
-	}
-
-	setupApi(cfg, router, version)
-
-	if cfg.Pages.Enabled {
-		indexPagePath := fmt.Sprintf("%s/index.html", cfg.Pages.StaticDir)
-		faviconPath := fmt.Sprintf("%s/favicon.ico", cfg.Pages.StaticDir)
-		router.GET("/", func(c *gin.Context) {
-			c.File(indexPagePath)
-			logInfo("IP:%s UA:%s METHOD:%s HTTPv:%s", c.ClientIP(), c.Request.UserAgent(), c.Request.Method, c.Request.Proto)
-		})
-		router.StaticFile("/favicon.ico", faviconPath)
-	} else if !cfg.Pages.Enabled {
-		router.GET("/", func(c *gin.Context) {
-			c.String(http.StatusForbidden, "403 Forbidden Access")
-			logWarning("403 > Path:/ IP:%s UA:%s METHOD:%s HTTPv:%s", c.ClientIP(), c.Request.UserAgent(), c.Request.Method, c.Request.Proto)
-		})
-	}
-
-	router.NoRoute(func(c *gin.Context) {
-		proxy.NoRouteHandler(cfg, limiter)(c)
-	})
+type Config struct {
+	WhiteList []string `json:"whiteList"`
+	BlackList []string `json:"blackList"`
 }
 
 func main() {
-	err := router.Run(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port))
-	if err != nil {
-		logError("Failed to start server: %v\n", err)
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+
+	httpClient = &http.Client{
+		Transport: &http.Transport{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			MaxIdleConns:          1000,
+			MaxIdleConnsPerHost:   1000,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+			ResponseHeaderTimeout: 300 * time.Second,
+		},
 	}
-	defer logger.Close()
-	fmt.Println("Program Exit")
+
+	loadConfig()
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			loadConfig()
+		}
+	}()
+
+	router.StaticFile("/", "./public/index.html")
+	router.StaticFile("/bootstrap.min.js", "./public/bootstrap.min.js")
+	router.StaticFile("/bootstrap.min.css", "./public/bootstrap.min.css")
+	router.StaticFile("/favicon.ico", "./public/favicon.ico")
+
+	router.NoRoute(handler)
+
+	err := router.Run(fmt.Sprintf("%s:%d", host, port))
+	if err != nil {
+		fmt.Printf("Error starting server: %v\n", err)
+	}
+}
+
+func handler(c *gin.Context) {
+	rawPath := strings.TrimPrefix(c.Request.URL.RequestURI(), "/")
+
+	for strings.HasPrefix(rawPath, "/") {
+		rawPath = strings.TrimPrefix(rawPath, "/")
+	}
+
+	if !strings.HasPrefix(rawPath, "http") {
+		c.String(http.StatusForbidden, "Invalid input.")
+		return
+	}
+
+	matches := checkURL(rawPath)
+	if matches != nil {
+		if len(config.WhiteList) > 0 && !checkList(matches, config.WhiteList) {
+			c.String(http.StatusForbidden, "Forbidden by white list.")
+			return
+		}
+		if len(config.BlackList) > 0 && checkList(matches, config.BlackList) {
+			c.String(http.StatusForbidden, "Forbidden by black list.")
+			return
+		}
+	} else {
+		c.String(http.StatusForbidden, "Invalid input.")
+		return
+	}
+
+	if exps[1].MatchString(rawPath) {
+		rawPath = strings.Replace(rawPath, "/blob/", "/raw/", 1)
+	}
+
+	proxy(c, rawPath)
+}
+
+func proxy(c *gin.Context, u string) {
+	req, err := http.NewRequest(c.Request.Method, u, c.Request.Body)
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("server error %v", err))
+		return
+	}
+
+	for key, values := range c.Request.Header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
+	req.Header.Del("Host")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		c.String(http.StatusInternalServerError, fmt.Sprintf("server error %v", err))
+		return
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
+		}
+	}(resp.Body)
+
+	if contentLength, ok := resp.Header["Content-Length"]; ok {
+		if size, err := strconv.Atoi(contentLength[0]); err == nil && size > sizeLimit {
+			c.String(http.StatusRequestEntityTooLarge, "File too large.")
+			return
+		}
+	}
+
+	resp.Header.Del("Content-Security-Policy")
+	resp.Header.Del("Referrer-Policy")
+	resp.Header.Del("Strict-Transport-Security")
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			c.Header(key, value)
+		}
+	}
+
+	if location := resp.Header.Get("Location"); location != "" {
+		if checkURL(location) != nil {
+			c.Header("Location", "/"+location)
+		} else {
+			proxy(c, location)
+			return
+		}
+	}
+
+	c.Status(resp.StatusCode)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		return
+	}
+}
+
+func loadConfig() {
+	file, err := os.Open("config.json")
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		return
+	}
+	defer func(file *os.File) {
+		err := file.Close()
+		if err != nil {
+
+		}
+	}(file)
+
+	var newConfig Config
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&newConfig); err != nil {
+		fmt.Printf("Error decoding config: %v\n", err)
+		return
+	}
+
+	configLock.Lock()
+	config = &newConfig
+	configLock.Unlock()
+}
+
+func checkURL(u string) []string {
+	for _, exp := range exps {
+		if matches := exp.FindStringSubmatch(u); matches != nil {
+			return matches[1:]
+		}
+	}
+	return nil
+}
+
+func checkList(matches, list []string) bool {
+	for _, item := range list {
+		if strings.HasPrefix(matches[0], item) {
+			return true
+		}
+	}
+	return false
 }

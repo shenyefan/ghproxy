@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh" data-bs-theme="auto">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GitHub 文件加速" />
+    <meta name="keywords" content="Moenya,github,proxy,github加速,gihub加速下载" />
+    <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+    <title>GitHub加速服务</title>
+    <link rel="stylesheet" href="bootstrap.min.css">
+    <style>
+        :root {
+            --primary: #007aff;
+            --secondary: #007aff;
+            --background: #f9f9f9;
+            --card-bg: #ffffff;
+            --text: #333333;
+            --border: #d1d1d6;
+            --muted: #64748b;
+            --success: #00a83ed2;
+            --danger: #ce0000dd;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #121212;
+                --card-bg: #1e1e1e;
+                --text: #ffffff;
+                --border: #334155;
+                --muted: #94a3b8;
+            }
+
+            .form-control::placeholder {
+                color: var(--muted);
+            }
+
+            .text-muted {
+                color: var(--muted) !important;
+            }
+
+            .btn-outline-secondary {
+                color: var(--muted);
+                border-color: var(--border);
+            }
+
+            .code-block {
+                background: rgba(255, 255, 255, 0.05);
+            }
+
+            .command-example {
+                background: rgba(255, 255, 255, 0.03);
+            }
+
+            .btn-primary {
+                --bs-btn-bg: var(--primary);
+                --bs-btn-border-color: var(--primary);
+                --bs-btn-hover-bg: var(--secondary);
+                --bs-btn-hover-border-color: var(--secondary);
+            }
+
+            .form-control {
+                background-color: rgba(255, 255, 255, 0.05);
+                border-color: var(--border);
+                color: var(--text);
+            }
+
+            a {
+                color: var(--secondary);
+            }
+        }
+
+        body {
+            background: var(--background);
+            color: var(--text);
+            font-family: 'Inter', system-ui, sans-serif;
+            line-height: 1.6;
+        }
+
+        .main-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .main-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .code-block {
+            background: rgba(37, 99, 235, 0.05);
+            border-left: 3px solid var(--primary);
+            border-radius: 6px;
+            padding: 1rem;
+            position: relative;
+            overflow-x: auto;
+        }
+
+        .guide-section {
+            border-left: 3px solid var(--primary);
+            padding-left: 1rem;
+            margin: 2rem 0;
+        }
+
+        .command-example {
+            position: relative;
+            padding: 1.25rem;
+            background: rgba(37, 99, 235, 0.03);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .command-example::before {
+            content: "➜";
+            position: absolute;
+            left: -1.5rem;
+            color: var(--muted);
+        }
+    </style>
+    <script>
+        function toSubmit(e) {
+            e.preventDefault();
+            // 获取用户输入的 GitHub 链接（支持带或不带协议头）
+            var input = document.getElementsByName('q')[0].value;
+            var baseUrl = location.href.substr(0, location.href.lastIndexOf('/') + 1);
+            var acceleratedLink = baseUrl + input;
+            // 显示生成的加速链接
+            document.getElementById("outputLink").textContent = acceleratedLink;
+            document.getElementById("output").hidden = false;
+            return false;
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            // 为表单提交绑定事件
+            document.getElementById("mainForm").addEventListener("submit", toSubmit);
+            // 复制按钮点击事件
+            document.getElementById("copyBtn").addEventListener("click", function() {
+                var link = document.getElementById("outputLink").textContent;
+                navigator.clipboard.writeText(link).then(function() {
+                    alert("链接已复制到剪贴板");
+                });
+            });
+            // 打开按钮点击事件
+            document.getElementById("openBtn").addEventListener("click", function() {
+                var link = document.getElementById("outputLink").textContent;
+                window.open(link);
+            });
+        });
+    </script>
+</head>
+<body>
+<div class="container py-4 py-lg-5">
+    <header class="text-center mb-5">
+        <h1 class="display-5 fw-bold mb-3">GitHub加速服务</h1>
+    </header>
+    <div class="main-card p-4 mb-4">
+        <!-- 使用新逻辑的表单，添加了 pattern 验证 -->
+        <form id="mainForm" class="mb-4" action=".." method="get">
+            <div class="mb-3">
+                <label for="inputUrl" class="form-label fw-semibold">GitHub 链接</label>
+                <input type="text" name="q" class="form-control form-control-lg" id="inputUrl"
+                       placeholder="输入 GitHub 文件/仓库链接"
+                       pattern="^((https|http):\/\/)?(github\.com\/.+?\/.+?\/(?:releases|archive|blob|raw|suites)|((?:raw|gist)\.(?:githubusercontent|github)\.com))\/.+$"
+                       required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100 py-2">
+                🚀 生成加速链接
+            </button>
+        </form>
+        <!-- 输出结果区域，包含复制和打开按钮 -->
+        <div id="output" class="mt-4" hidden>
+            <div class="code-block">
+                <code id="outputLink" class="d-block text-break"></code>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button id="copyBtn" class="btn btn-outline-secondary">
+                    ⎘ 复制链接
+                </button>
+                <button id="openBtn" class="btn btn-primary">
+                    ↗ 立即打开
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-card p-4">
+        <h2 class="h4 fw-bold mb-4">📚 详细使用指南</h2>
+
+        <div class="guide-section">
+            <h3 class="h5 fw-semibold mb-3">支持的工具</h3>
+            <ul class="list-unstyled">
+                <li class="mb-2">✅ 支持域名：github.com</li>
+                <li class="mb-2">✅ 支持域名：raw.githubusercontent.com</li>
+                <li class="mb-2">✅ 支持域名：gist.githubusercontent.com</li>
+                <li class="mb-2">✅ 支持HTTPS Git Clone</li>
+                <li class="text-muted">❌ 不支持 SSH Git Clone</li>
+            </ul>
+        </div>
+        <div class="guide-section">
+            <h3 class="h5 fw-semibold mb-3">基础用法示例</h3>
+            <div class="command-example">
+                <h4 class="h6 fw-medium mb-2">Git 克隆</h4>
+                <code class="d-block mb-3">git clone <span class="protocol">https</span>://<span class="host">example.com</span>/https://github.com/user/project.git</code>
+                <h4 class="h6 fw-medium mb-2">私有仓库克隆</h4>
+                <code class="d-block">git clone <span class="protocol">https</span>://user:your_token@<span class="host">example.com</span>/https://github.com/user/project.git</code>
+            </div>
+            <div class="command-example">
+                <h4 class="h6 fw-medium mb-2">文件下载</h4>
+                <code class="d-block mb-3">wget <span class="protocol">https</span>://<span class="host">example.com</span>/https://raw.githubusercontent.com/user/project/main/README.md</code>
+                <h4 class="h6 fw-medium mb-2">版本发布</h4>
+                <code class="d-block">curl -LO <span class="protocol">https</span>://<span class="host">example.com</span>/https://github.com/user/project/releases/download/v1.0.0/project_1.0.0.amd64.tar.gz</code>
+            </div>
+        </div>
+        <div class="guide-section">
+            <h3 class="h5 fw-semibold mb-3">支持的文件类型</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="main-card p-3">
+                        <h4 class="h6 fw-medium mb-2">原始文件</h4>
+                        <code class="d-block text-muted fs-sm">https://raw.githubusercontent.com/user/repo/main/file.txt</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="main-card p-3">
+                        <h4 class="h6 fw-medium mb-2">分支源码</h4>
+                        <code class="d-block text-muted fs-sm">https://github.com/user/repo/archive/main.zip</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="main-card p-3">
+                        <h4 class="h6 fw-medium mb-2">版本发布</h4>
+                        <code class="d-block text-muted fs-sm">https://github.com/user/repo/releases/download/v1.0.0/app.zip</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="main-card p-3">
+                        <h4 class="h6 fw-medium mb-2">Gist 文件</h4>
+                        <code class="d-block text-muted fs-sm">https://gist.githubusercontent.com/user/gist_id/raw/file.txt</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="main-card p-3">
+                        <h4 class="h6 fw-medium mb-2">HTTPS Git Clone</h4>
+                        <code class="d-block text-muted fs-sm">git clone https://github.com/user/repo.git</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <footer class="text-center mt-5 text-muted">
+        <p class="mb-0 small">
+            GHProxy Copyright © 2022 - <span id="currentYear"></span>
+            <a href="https://moenya.net" class="text-decoration-none">Moenya</a><br>
+        </p>
+    </footer>
+</div>
+<script src="bootstrap.min.js"></script>
+</body>
+</html>
